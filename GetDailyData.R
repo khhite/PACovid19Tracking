@@ -2,6 +2,9 @@
 # Daily updates are posted at 12pm
 # This script will run daily at 12:05pm
 
+# set working directory to parent directory of this file
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+
 
 # load necessary packages
 packages <- c("rvest", "tidyverse", "data.table")
@@ -10,6 +13,9 @@ if(length(missing.packages)) install.packages(missing.packages)
 for(pkg in packages) {
   do.call("library",list(pkg))
 }
+
+# set directory to write data
+dir <- "data/"
 
 # get today's date
 today <- Sys.Date()
