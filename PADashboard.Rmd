@@ -1,9 +1,5 @@
 ---
 title: "Pennsylvania Covid-19 Tracking"
-resource_files:
-- NursingHomes_2020-05-05.csv
-- PACountyCovid19_2020-05-05.csv
-- 2020-05-05_totalcases.csv
 runtime: shiny
 output:
   flexdashboard::flex_dashboard:
