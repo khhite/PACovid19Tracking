@@ -197,7 +197,7 @@ Row
 ### Cases in the County
 ```{r}
 renderPlot({
-df_gathered %>% filter(County==input$county & measurement==cases) %>%
+df_gathered %>% filter(County==input$county & measurement %in% cases) %>%
   ggplot() +
   geom_line(aes(Date, value, color=measurement)) +
   theme_custom() +
@@ -216,7 +216,7 @@ Row
 ### Long-Term Care and Non-Long-Term Care Cases in the County
 ```{r}
 renderPlot({
-df_gathered %>% filter(County==input$county & measurement==cases) %>%
+df_gathered %>% filter(County==input$county & measurement %in% cases) %>%
   ggplot(aes(x=Date, y=value, fill=measurement)) +
   geom_bar(stat="identity") +
   theme_custom() +
@@ -232,7 +232,7 @@ df_gathered %>% filter(County==input$county & measurement==cases) %>%
 ### Long-Term Care and Non-Long-Term Care Deaths in the County
 ```{r}
 renderPlot({
-  df_gathered %>% filter(County==input$county & measurement==deaths) %>%
+  df_gathered %>% filter(County==input$county & measurement %in% deaths) %>%
   ggplot(aes(x=Date, y=value, fill=measurement)) +
   geom_bar(stat="identity") +
   theme_custom() +
