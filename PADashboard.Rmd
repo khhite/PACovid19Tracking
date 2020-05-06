@@ -1,0 +1,252 @@
+---
+title: "Pennsylvania Covid-19 Tracking"
+resource_files:
+- NursingHomes_2020-05-05.csv
+- PACountyCovid19_2020-05-05.csv
+- 2020-05-05_totalcases.csv
+runtime: shiny
+output:
+  flexdashboard::flex_dashboard:
+    orientation: row
+    vertical_layout: scroll
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(tidyverse)
+library(lubridate)
+library(formattable)
+source("customtheme.R")
+```
+
+```{r}
+# get today's date
+now <- Sys.time()
+hour <- format(strptime(now,"%Y-%m-%d %H:%M:%S"),'%H')
+today <- Sys.Date()
+yesterday <- today - 1
+whichday <- if (hour < 12) { yesterday } else { today }
+```
+
+```{r}
+# read in data from CSV files
+if (hour < 12) {
+  data <- read_csv(paste0("PACountyCovid19_",yesterday,".csv"))
+  nh <- read_csv(paste0("NursingHomes_",yesterday,".csv")) 
+  total <- read_csv(paste0(yesterday, "_totalcases.csv"))
+} else {
+  data <- read_csv(paste0("PACountyCovid19_",today,".csv"))
+  nh <- read_csv(paste0("NursingHomes_",today,".csv"))
+  total <- read_csv(paste0(today, "_totalcases.csv"))
+}
+```
+
+```{r}
+# join nh_data to countydata
+df <- left_join(data, nh, by = c("Date","County")) %>% 
+  # fill NAs with 0
+  replace(is.na(.), 0)
+```
+
+```{r}
+# change Deaths.x to Deaths and Deaths.y to NH_Deaths
+names(df) <- c("Date","County","Total_Cases","Negatives","Deaths","NH_Facilities","NH_ResidentCases","NH_EmployeeCases","NH_Deaths","NH_TotalCases")
+
+# create Non NH Cases, NH percentage of cases, Non NH Deaths, NH percentage of deaths
+df <- df %>% mutate(NonNH_Cases = Total_Cases - NH_TotalCases,
+                    NonNH_Pct_Cases = round(NonNH_Cases/Total_Cases*100,2),
+                    NH_Pct_Cases = round(NH_TotalCases/Total_Cases*100,2),
+                    NonNH_Deaths = Deaths - NH_Deaths,
+                    NonNH_Pct_Deaths = round(NonNH_Deaths/Total_Cases*100,2),
+                    NH_Pct_Deaths = round(NH_Deaths/Deaths*100,2))
+
+# reshape dataframe from wide to long
+df_gathered <- gather(df, measurement, value, Total_Cases:NH_Pct_Deaths, factor_key = TRUE)
+```
+
+```{r}
+# set variables for cases, percent cases, deaths, percent deaths to use to select specific measurements
+cases <- c("NH_TotalCases", "NonNH_Cases")
+pctcases <- c("NonNH_Pct_Cases","NH_Pct_Cases")
+deaths <- c("NH_Deaths", "NonNH_Deaths")
+pctdeaths <- c("NonNH_Pct_Deaths","NH_Pct_Deaths")
+```
+
+
+
+State Data
+=======================================================================
+Row
+-----------------------------------------------------------------------
+### Total Cases {.value-box}
+```{r}
+renderValueBox({
+  total_cases <- format(total$Total_Cases, big.mark = ",")
+  valueBox(
+    value = total_cases,
+    icon = "fa-area-chart",
+    color = "blue"
+  )
+})
+```
+
+### Total Deaths {.value-box}
+
+```{r}
+renderValueBox({
+  total_deaths <- format(total$Deaths, big.mark = ",")
+  valueBox(
+    value = total_deaths,
+    icon = "fa-area-chart",
+    color = "blue"
+  )
+})
+```
+
+### Total Negatives {.value-box}
+
+```{r}
+renderValueBox({
+  total_negatives <- format(total$Negative, big.mark = ",")
+  valueBox(
+    value = total_negatives,
+    icon = "fa-area-chart",
+    color = "blue"
+  )
+})
+```
+
+Row {data-height=50}
+-----------------------------------------------------------------------
+### Select Cases or Deaths 
+```{r}
+#radioButtons("category", c("Cases" = "Cases","Deaths" = "Deaths"))
+radioButtons("category", label = NULL, c("Cases" = "Cases","Deaths" = "Deaths"), inline=TRUE)
+```
+
+Row 
+-----------------------------------------------------------------------
+### 
+```{r, fig.width=12, fig.height=12}
+renderPlot({
+      measurement_cat <- switch(input$category,
+                            Cases = cases,
+                            Deaths = deaths,
+                            Cases)
+      df_gathered %>% filter(measurement==measurement_cat) %>%
+        ggplot() +
+        geom_line(aes(Date, value, color=measurement)) +
+        theme_custom() +
+        scale_colour_manual(values=c("gold", "navyblue"),labels=c(paste0("LTC ",input$category),paste0("Non-LTC ",input$category))) +
+        facet_wrap( ~ County, nrow=10) +
+        labs(title = paste0(input$category," Per Pennsylvania County as of ", whichday),
+             subtitle = "*Long Term Care Facilities weren't included in the data until April 16",
+             caption = "Data Source: Pennsylvania Department of Health",
+             x = "", y = paste0("Number of ", input$category), 
+             color="")
+    })
+```
+
+County Data
+=======================================================================
+Row {data-height=100}
+-----------------------------------------------------------------------
+```{r}
+selectInput("county", label = "Select a county",choices = df$County)
+```
+
+Row
+-----------------------------------------------------------------------
+### Total Cases {.value-box}
+
+```{r}
+renderValueBox({
+  county_cases <- format(data$Total_Cases[data$County==input$county & data$Date==max(data$Date)], big.mark = ",")
+  valueBox(
+    value = county_cases,
+    icon = "fa-area-chart",
+    color = "blue"
+  )
+})
+```
+
+### Total Deaths {.value-box}
+
+```{r}
+renderValueBox({
+  county_deaths <- format(data$Deaths[data$County==input$county & data$Date==max(data$Date)], big.mark = ",")
+  valueBox(
+    value = county_deaths,
+    icon = "fa-area-chart",
+    color = "blue"
+  )
+})
+```
+
+### Total Negatives {.value-box}
+
+```{r}
+renderValueBox({
+  total_negatives <- format(data$Negatives[data$County==input$county & data$Date==max(data$Date)], big.mark = ",")
+  valueBox(
+    value = total_negatives,
+    icon = "fa-area-chart",
+    color = "blue"
+  )
+})
+```
+
+Row
+-----------------------------------------------------------------------
+### Cases in the County
+```{r}
+renderPlot({
+df_gathered %>% filter(County==input$county & measurement==cases) %>%
+  ggplot() +
+  geom_line(aes(Date, value, color=measurement)) +
+  theme_custom() +
+  #scale_x_date(breaks=datebreaks, date_labels = "%b %d") +
+  scale_colour_manual(values=c("gold", "navyblue"),labels=c("LTC Cases","Non-LTC Cases")) +
+  labs(title = paste0(input$county, "Cases"),
+       subtitle = "*Long Term Care Facilities weren't included in the data until April 16",
+       caption = "Data Source: Pennsylvania Department of Health",
+       x = "", y = "Number of Cases", 
+       color="")
+})
+```
+
+Row
+-----------------------------------------------------------------------
+### Long-Term Care and Non-Long-Term Care Cases in the County
+```{r}
+renderPlot({
+df_gathered %>% filter(County==input$county & measurement==cases) %>%
+  ggplot(aes(x=Date, y=value, fill=measurement)) +
+  geom_bar(stat="identity") +
+  theme_custom() +
+  scale_fill_manual(values=c("gold", "navyblue"),labels=c("LTC Cases","Non-LTC Cases")) +
+  labs(title = "Cases in Long Term Care Facilities Compared to All Others",
+       subtitle = "*Long Term Care Facilities weren't included in the data until April 16",
+       caption = "Data Source: Pennsylvania Department of Health", 
+       x = "", y = "Number of Cases",
+       fill="") 
+})
+```
+
+### Long-Term Care and Non-Long-Term Care Deaths in the County
+```{r}
+renderPlot({
+  df_gathered %>% filter(County==input$county & measurement==deaths) %>%
+  ggplot(aes(x=Date, y=value, fill=measurement)) +
+  geom_bar(stat="identity") +
+  theme_custom() +
+  scale_fill_manual(values=c("gold", "navyblue"),labels=c("LTC Deaths","Non-LTC Deaths")) +
+  labs(title = "Deaths in Long Term Care Facilities Compared to All Others",
+       subtitle = "*Long Term Care Facilities weren't included in the data until April 16",
+       caption = "Data Source: Pennsylvania Department of Health", 
+       x = "", y = "Number of Deaths",
+       fill="") 
+})
+```
+
+
