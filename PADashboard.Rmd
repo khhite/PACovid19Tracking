@@ -31,13 +31,13 @@ whichday <- if (hour < 12) { yesterday } else { today }
 ```{r}
 # read in data from CSV files
 if (hour < 12) {
-  data <- read_csv(paste0("PACountyCovid19_",yesterday,".csv"))
-  nh <- read_csv(paste0("NursingHomes_",yesterday,".csv")) 
-  total <- read_csv(paste0(yesterday, "_totalcases.csv"))
+  data <- read_csv(paste0("data/PACountyCovid19_",yesterday,".csv"))
+  nh <- read_csv(paste0("data/NursingHomes_",yesterday,".csv")) 
+  total <- read_csv(paste0("data/",yesterday, "_totalcases.csv"))
 } else {
-  data <- read_csv(paste0("PACountyCovid19_",today,".csv"))
-  nh <- read_csv(paste0("NursingHomes_",today,".csv"))
-  total <- read_csv(paste0(today, "_totalcases.csv"))
+  data <- read_csv(paste0("data/PACountyCovid19_",today,".csv"))
+  nh <- read_csv(paste0("data/NursingHomes_",today,".csv"))
+  total <- read_csv(paste0("data/",today, "_totalcases.csv"))
 }
 ```
 
